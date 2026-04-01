@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Keerti ❤️</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Great+Vibes&family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #ff4b72;
+            --glow: 0 0 20px rgba(255, 75, 114, 0.6);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #webgl-container, #fireworks-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        #fireworks-canvas { z-index: 2; }
+
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            padding: 2rem;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%);
+        }
+
+        .slide.active { visibility: visible; }
+
+        /* Typography */
+        h1, h2, p { text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        .text-cinematic { font-family: 'Playfair Display', serif; font-size: 3vw; line-height: 1.4; font-style: italic; font-weight: 400; color: #fdfdfd; max-width: 800px; }
+        .text-highlight { color: var(--primary); font-family: 'Great Vibes', cursive; font-size: 5vw; text-shadow: var(--glow); }
+        
+        @media (max-width: 768px) {
+            .text-cinematic { font-size: 6vw; }
+            .text-highlight { font-size: 12vw; }
+        }
+
+        /* Cinematic Buttons */
+        .btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
+        }
+        .btn:hover::before { left: 100%; }
+        .btn:hover { background: rgba(255, 255, 255, 0.2); box-shadow: 0 0 25px rgba(255, 75, 114, 0.5); transform: scale(1.05); }
+
+        /* --- Custom Slide Elements --- */
+
+        /* Slide 1: Cake */
+        .cake-container { position: relative; width: 200px; height: 200px; margin-bottom: 40px; }
+        .cake-base { position: absolute; bottom: 0; width: 200px; height: 80px; background: linear-gradient(to right, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); border-radius: 100px / 40px; box-shadow: 0 10px 30px rgba(255,105,180,0.5); }
+        .cake-top { position: absolute; bottom: 40px; width: 200px; height: 80px; background: #fff; border-radius: 100px / 40px; }
+        .cake-text { position: absolute; bottom: 30px; width: 100%; text-align: center; font-family: 'Great Vibes'; color: #ff4b72; font-size: 2rem; z-index: 5; }
+        .candle { position: absolute; top: 20px; left: 95px; width: 10px; height: 40px; background: repeating-linear-gradient(45deg, #fff, #fff 5px, #ff4b72 5px, #ff4b72 10px); border-radius: 5px; }
+        .flame { position: absolute; top: -20px; left: -2px; width: 14px; height: 24px; background: #ffcc00; border-radius: 50% 50% 20% 20%; box-shadow: 0 0 20px #ffcc00, 0 0 40px #ff6600; animation: flicker 0.1s infinite alternate; transition: all 0.5s; }
+        .flame.out { opacity: 0; transform: scale(0); }
+        .smoke { position: absolute; top: -10px; left: 0; width: 10px; height: 10px; background: rgba(255,255,255,0.5); border-radius: 50%; opacity: 0; filter: blur(3px); }
+        @keyframes flicker { 0% { transform: rotate(-2deg) scale(1); } 100% { transform: rotate(2deg) scale(1.1); } }
+
+        /* Slide 4: Giant Heart */
+        .giant-heart { width: 150px; height: 150px; background: #ff2a5f; position: relative; transform: rotate(-45deg); box-shadow: 0 0 100px #ff2a5f; animation: pulse 2s infinite; margin-bottom: 50px; }
+        .giant-heart::before, .giant-heart::after { content: ''; width: 150px; height: 150px; background: #ff2a5f; border-radius: 50%; position: absolute; }
+        .giant-heart::before { top: -75px; left: 0; }
+        .giant-heart::after { left: 75px; top: 0; }
+        @keyframes pulse { 0% { transform: rotate(-45deg) scale(1); } 50% { transform: rotate(-45deg) scale(1.1); box-shadow: 0 0 150px #ff2a5f; } 100% { transform: rotate(-45deg) scale(1); } }
+
+        /* Slide 9: Stamp Paper */
+        .stamp-paper {
+            width: 90%; max-width: 600px; min-height: 700px;
+            background: #f4ebd0; /* Old paper color */
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.05) 21px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 50px rgba(139,69,19,0.2);
+            padding: 40px; color: #333; position: relative;
+            transform-style: preserve-3d;
+            border: 1px solid #d3c5a3;
+        }
+        .stamp-header {
+            border: 4px double #2e5a27; padding: 10px; text-align: center; margin-bottom: 30px;
+            background: repeating-linear-gradient(45deg, rgba(46,90,39,0.1), rgba(46,90,39,0.1) 10px, transparent 10px, transparent 20px);
+        }
+        .stamp-header h2 { font-family: 'Cinzel', serif; color: #2e5a27; font-size: 2rem; margin: 0; letter-spacing: 2px; }
+        .stamp-header p { font-size: 1rem; color: #555; font-weight: bold; }
+        .stamp-content { font-family: 'Playfair Display', serif; font-size: 1.8rem; line-height: 1.8; text-align: center; margin: 40px 0; font-style: italic; }
+        .stamp-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px; font-family: 'Montserrat'; font-weight: bold; }
+        
+        /* SVG Signature Animation */
+        .signature-box { text-align: center; }
+        .signature-svg { width: 250px; height: 80px; }
+        .sig-path { fill: none; stroke: #000080; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Heart Split Transition Overlay */
+        .heart-split-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; }
+        .half-heart { width: 50vw; height: 100vh; background: #ff0040; position: absolute; top: 0; display: flex; justify-content: center; align-items: center; }
+        .half-heart.left { left: 0; clip-path: polygon(100% 0, 0 0, 0 100%, 100% 100%, 100% 70%, 50% 50%, 100% 30%); transform-origin: left; }
+        .half-heart.right { right: 0; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 70%, 50% 50%, 0 30%); transform-origin: right; }
+
+        /* Global Next Hint */
+        .next-hint { position: fixed; bottom: 30px; width: 100%; text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.5); letter-spacing: 3px; z-index: 20; animation: floatUp 2s infinite; pointer-events: none; }
+        @keyframes floatUp { 0%, 100% { transform: translateY(0); opacity: 0.3; } 50% { transform: translateY(-10px); opacity: 0.8; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- 3D Environment -->
+    <div id="webgl-container"></div>
+    <canvas id="fireworks-canvas"></canvas>
+
+    <!-- Transition Overlays -->
+    <div class="heart-split-overlay" id="heart-split">
+        <div class="half-heart left"></div>
+        <div class="half-heart right"></div>
+    </div>
+
+    <!-- UI / Story Layers -->
+    <div id="ui-layer">
+        
+        <!-- SLIDE 1 -->
+        <section class="slide" id="slide1">
+            <div class="cake-container">
+                <div class="cake-base"></div>
+                <div class="cake-top"></div>
+                <div class="cake-text">Keerti<br><span style="font-size: 1.2rem; font-family:'Montserrat'">17</span></div>
+                <div class="candle">
+                    <div class="flame" id="cake-flame"></div>
+                    <div class="smoke" id="cake-smoke"></div>
+                </div>
+            </div>
+            <p class="text-cinematic">"Happy birthday meri jaan 🥰🎉🥳🎂🥳 mere golu molu see baccha <span class="text-highlight">happpppppyyyyyy birthday</span> 🥰🥰🥰🥰"</p>
+        </section>
+
+        <!-- SLIDE 2 -->
+        <section class="slide" id="slide2">
+            <p class="text-cinematic">"Mere pyareee se baccha I wish Tum hmeshhhaa apni life m khus rho happy rho or apne <span class="text-highlight">1000000th birthday</span> tk jio mere sath 🥰😘😘"</p>
+        </section>
+
+        <!-- SLIDE 3 -->
+        <section class="slide" id="slide3">
+            <p class="text-cinematic">"Yrr mai tere pass to nhi hu lekin fir bhi I think <br>Mai hu tere din me 🥰💝✨️"</p>
+            <button class="btn" id="btn-open-heart">Bhle khol k dekh lo</button>
+        </section>
+
+        <!-- SLIDE 4 -->
+        <section class="slide" id="slide4">
+            <div class="giant-heart"></div>
+            <p class="text-cinematic">"<span class="text-highlight">I love youuuuuuuu sooooooo much</span> mere baccha meri jaan meri cutie wifey jiii 🥰💝💝💝💖💖"</p>
+        </section>
+
+        <!-- SLIDE 5 (Fireworks - Logic in JS) -->
+        <section class="slide" id="slide5">
+            <!-- Completely visual, fireworks canvas takes over -->
+        </section>
+
+        <!-- SLIDE 6 -->
+        <section class="slide" id="slide6">
+            <p class="text-cinematic" style="font-size: 4vw; line-height: 1.6;">"Hmmmm 🤔🤔🤔🤔🤔🤔<br>I think mai bhul rha hu kuchhh<br>Oo yaad aaya tera birthday gift"</p>
+            <button class="btn" id="btn-gift">your gift</button>
+        </section>
+
+        <!-- SLIDE 7 -->
+        <section class="slide" id="slide7">
+            <p class="text-cinematic" style="color: #ccc; font-size: 2.5vw;">"maine bahut socha kya du tujhe kuchh dhng ka mila hi nhi yrr to sorry uske liye"</p>
+        </section>
+
+        <!-- SLIDE 8 -->
+        <section class="slide" id="slide8">
+            <p class="text-cinematic">"Arrre mere baccha esa thodi hota h tere birthday p mai khuchh bhi na du tu mai khud ko hi tukhe de rha hu vaise bhi tera hi tha phle se"</p>
+            <button class="btn" id="btn-certificate">stratificate</button>
+        </section>
+
+        <!-- SLIDE 9 -->
+        <section class="slide" id="slide9">
+            <div class="stamp-paper" id="stamp-paper">
+                <div class="stamp-header">
+                    <h2>भारतीय गैर न्यायिक</h2>
+                    <p>INDIA NON JUDICIAL</p>
+                    <p style="color: #d32f2f;">Rs. 100</p>
+                </div>
+                
+                <p class="stamp-content">
+                    "hoMai sanjay apne hoso heas m khud ko keerti k naam krta hu"
+                </p>
+
+                <div class="stamp-footer">
+                    <div>Date: <br><span style="font-family:'Playfair Display'; font-style:italic; font-size:1.2rem;">1st April 2026</span></div>
+                    <div class="signature-box">
+                        <svg class="signature-svg" viewBox="0 0 300 100">
+                            <!-- Simulated handwritten "sanjay gurjar" -->
+                            <path class="sig-path" d="M 30 70 C 40 40, 60 40, 50 60 C 40 80, 70 80, 80 60 C 90 40, 80 80, 100 80 C 110 80, 120 60, 130 80 C 140 100, 130 50, 150 70 C 160 80, 150 110, 170 70 C 180 50, 190 70, 200 60 C 210 50, 220 80, 230 60 C 240 40, 250 80, 260 70 C 270 60, 280 80, 290 50" />
+                        </svg>
+                        <br><span style="font-size:0.8rem; color:#666;">sanjay gurjar</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="next-hint" id="global-hint">Tap anywhere to continue</div>
+
+    <script>
+        // ==========================================
+        // 1. THREE.JS GLOBAL ENVIRONMENT
+        // ==========================================
+        const scene = new THREE.Scene();
+        // Add subtle fog for depth
+        scene.fog = new THREE.FogExp2(0x000000, 0.001);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('webgl-container').appendChild(renderer.domElement);
+
+        // Particle System (Stars/Dust)
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 2000;
+        const posArray = new Float32Array(particlesCount * 3);
+        for(let i = 0; i < particlesCount * 3; i++) { posArray[i] = (Math.random() - 0.5) * 20; }
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMaterial = new THREE.PointsMaterial({ size: 0.02, color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+
+        // Floating Hearts System
+        const createHeartTexture = () => {
+            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ff4b72';
+            ctx.beginPath();
+            ctx.moveTo(32, 15);
+            ctx.bezierCurveTo(32, 12, 27, 0, 15, 0); ctx.bezierCurveTo(0, 0, 0, 17.5, 0, 17.5); ctx.bezierCurveTo(0, 27.5, 10, 38, 32, 54);
+            ctx.bezierCurveTo(54, 38, 64, 27.5, 64, 17.5); ctx.bezierCurveTo(64, 17.5, 64, 0, 49, 0); ctx.bezierCurveTo(37, 0, 32, 12, 32, 15);
+            ctx.fill();
+            return new THREE.CanvasTexture(canvas);
+        };
+        const heartTexture = createHeartTexture();
+        const hearts = [];
+        for(let i=0; i<100; i++){
+            const mat = new THREE.SpriteMaterial({ map: heartTexture, color: 0xffffff, transparent: true, opacity: Math.random() });
+            const sprite = new THREE.Sprite(mat);
+            sprite.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 10 - 2);
+            sprite.scale.set(0.2, 0.2, 0.2);
+            sprite.userData = { velocity: new THREE.Vector3(0, Math.random() * 0.02 + 0.01, 0), speedRot: Math.random() * 0.05 };
+            scene.add(sprite);
+            hearts.push(sprite);
+        }
+
+        camera.position.z = 5;
+
+        // Colors for different slides (Background / Particles)
+        const themes = [
+            { bg: '#05001a', particle: 0xaa00ff, heartBase: 0xffffff }, // 1: Cosmic
+            { bg: '#2a0013', particle: 0xffccff, heartBase: 0xff66a3 }, // 2: Dream
+            { bg: '#0f000f', particle: 0x8800ff, heartBase: 0xff0040 }, // 3: Soul
+            { bg: '#330000', particle: 0xff0000, heartBase: 0xff0000 }, // 4: Open Heart
+            { bg: '#000000', particle: 0xffffff, heartBase: 0xffffff }, // 5: Fireworks (Dark)
+            { bg: '#1a1a00', particle: 0xffff00, heartBase: 0xffaa00 }, // 6: Thinking
+            { bg: '#0a0a0a', particle: 0x555555, heartBase: 0x333333 }, // 7: Fake Gift (Sad)
+            { bg: '#261100', particle: 0xffaa00, heartBase: 0xff5500 }, // 8: Real Reveal
+            { bg: '#111111', particle: 0xd3c5a3, heartBase: 0xffffff }  // 9: Certificate
+        ];
+
+        let currentTheme = themes[0];
+        
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            particlesMesh.rotation.y += 0.001;
+            particlesMesh.rotation.x += 0.0005;
+
+            // Animate Hearts
+            hearts.forEach(heart => {
+                heart.position.add(heart.userData.velocity);
+                heart.material.rotation += heart.userData.speedRot;
+                if(heart.position.y > 8) {
+                    heart.position.y = -8;
+                    heart.position.x = (Math.random() - 0.5) * 15;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate3D();
+
+        // ==========================================
+        // 2. CUSTOM FIREWORKS CANVAS (Slide 5)
+        // ==========================================
+        const fwCanvas = document.getElementById('fireworks-canvas');
+        const ctx = fwCanvas.getContext('2d');
+        fwCanvas.width = window.innerWidth; fwCanvas.height = window.innerHeight;
+        
+        let fwParticles = [];
+        let isFireworksActive = false;
+
+        class FwParticle {
+            constructor(x, y, color, vx, vy, life) {
+                this.x = x; this.y = y; this.color = color;
+                this.vx = vx; this.vy = vy;
+                this.life = life; this.maxLife = life;
+                this.alpha = 1;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.vy += 0.05; // gravity
+                this.life--;
+                this.alpha = Math.max(0, this.life / this.maxLife);
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        function launchFirework(isHeart = false) {
+            if(!isFireworksActive) return;
+            const x = isHeart ? fwCanvas.width/2 : Math.random() * fwCanvas.width;
+            const y = isHeart ? fwCanvas.height/3 : fwCanvas.height - 10;
+            const colors = ['#ff4b72', '#ffcc00', '#00ccff', '#ff00ff'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            if(isHeart) {
+                // Heart Math formula
+                for(let t = 0; t < Math.PI * 2; t += 0.05) {
+                    const hx = 16 * Math.pow(Math.sin(t), 3);
+                    const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                    fwParticles.push(new FwParticle(x, y, '#ff0040', hx * 0.3, hy * 0.3, 150));
+                }
+                // Text inside heart
+                setTimeout(() => {
+                    ctx.globalAlpha = 1;
+                    ctx.font = "italic 4vw 'Playfair Display'";
+                    ctx.fillStyle = "#fff";
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "#ff0040";
+                    ctx.shadowBlur = 20;
+                    ctx.fillText("Sanjay ❤️ Keerti", fwCanvas.width/2, fwCanvas.height/3);
+                    ctx.shadowBlur = 0; // reset
+                }, 500);
+            } else {
+                // Normal explosion
+                for(let i=0; i<50; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 4 + 1;
+                    fwParticles.push(new FwParticle(x, Math.random()*fwCanvas.height/2, color, Math.cos(angle)*speed, Math.sin(angle)*speed, Math.random()*50+50));
+                }
+            }
+        }
+
+        function animateFireworks() {
+            if(!isFireworksActive && fwParticles.length === 0) {
+                ctx.clearRect(0,0,fwCanvas.width, fwCanvas.height);
+                return;
+            }
+            requestAnimationFrame(animateFireworks);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Trail effect
+            ctx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+            
+            for(let i = fwParticles.length - 1; i >= 0; i--) {
+                fwParticles[i].update();
+                fwParticles[i].draw();
+                if(fwParticles[i].life <= 0) fwParticles.splice(i, 1);
+            }
+        }
+
+
+        // ==========================================
+        // 3. STORY / NAVIGATION LOGIC
+        // ==========================================
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+        let isTransitioning = false;
+        const hint = document.getElementById('global-hint');
+
+        // Initial setup
+        gsap.set(slides[0], { autoAlpha: 1, scale: 1 });
+        updateEnvironment(0);
+
+        function updateEnvironment(index) {
+            const theme = themes[index];
+            gsap.to(document.body, { backgroundColor: theme.bg, duration: 2 });
+            gsap.to(particlesMaterial.color, { r: new THREE.Color(theme.particle).r, g: new THREE.Color(theme.particle).g, b: new THREE.Color(theme.particle).b, duration: 2 });
+            hearts.forEach(h => gsap.to(h.material.color, { r: new THREE.Color(theme.heartBase).r, g: new THREE.Color(theme.heartBase).g, b: new THREE.Color(theme.heartBase).b, duration: 2 }));
+        }
+
+        function nextSlide() {
+            if(isTransitioning || currentSlide >= slides.length - 1) return;
+            
+            // Check if current slide requires button click to proceed
+            if(currentSlide === 2 || currentSlide === 5 || currentSlide === 7) return; 
+
+            goToSlide(currentSlide + 1);
+        }
+
+        function goToSlide(index, specialTransition = null) {
+            isTransitioning = true;
+            hint.style.opacity = 0; // Hide hint during transition
+
+            const current = slides[currentSlide];
+            const next = slides[index];
+
+            updateEnvironment(index);
+
+            if(specialTransition === 'heartSplit') {
+                // Heart Split Transition Animation
+                const overlay = document.getElementById('heart-split');
+                gsap.set(overlay, { autoAlpha: 1 });
+                gsap.set('.half-heart.left', { rotationY: 0, x: 0 });
+                gsap.set('.half-heart.right', { rotationY: 0, x: 0 });
+
+                const tl = gsap.timeline({ onComplete: () => {
+                    gsap.set(current, { autoAlpha: 0 });
+                    gsap.set(next, { autoAlpha: 1, scale: 1 });
+                    currentSlide = index;
+                    isTransitioning = false;
+                    checkSlideSpecifics();
+                    gsap.set(overlay, { autoAlpha: 0 }); // hide overlay
+                }});
+
+                // "Doors" open effect
+                tl.to('.half-heart.left', { x: '-100%', duration: 1.5, ease: "power3.inOut" }, 0)
+                  .to('.half-heart.right', { x: '100%', duration: 1.5, ease: "power3.inOut" }, 0)
+                  .to(current, { autoAlpha: 0, duration: 0.5 }, 0.5)
+                  .fromTo(next, { scale: 1.5, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 1.5, ease: "power2.out" }, 0.5);
+
+            } else {
+                // Default Cinematic Crossfade + Drift
+                const tl = gsap.timeline({ onComplete: () => {
+                    currentSlide = index;
+                    isTransitioning = false;
+                    checkSlideSpecifics();
+                }});
+
+                tl.to(current, { autoAlpha: 0, scale: 1.1, duration: 1.5, ease: "power2.inOut" })
+                  .fromTo(next, { autoAlpha: 0, scale: 0.9 }, { autoAlpha: 1, scale: 1, duration: 1.5, ease: "power2.out" }, "-=0.5");
+            }
+        }
+
+        function checkSlideSpecifics() {
+            // Manage Next Hint Visibility
+            if([2, 5, 7, 8].includes(currentSlide)) {
+                hint.style.display = 'none'; // Hide if button required or last slide
+            } else {
+                hint.style.display = 'block';
+                setTimeout(() => { if(!isTransitioning) hint.style.opacity = 0.5; }, 1000);
+            }
+
+            // Slide 1: Cake animation
+            if(currentSlide === 0) {
+                setTimeout(() => {
+                    document.getElementById('cake-flame').classList.add('out');
+                    gsap.to('#cake-smoke', { opacity: 1, y: -50, scale: 3, duration: 2, ease: "power1.out", onComplete: () => gsap.to('#cake-smoke', {opacity: 0}) });
+                    // Accelerate hearts upwards like wind
+                    hearts.forEach(h => gsap.to(h.userData.velocity, { y: 0.1, duration: 2 }));
+                }, 3000);
+            }
+
+            // Slide 5: Fireworks
+            if(currentSlide === 4) {
+                isFireworksActive = true;
+                animateFireworks();
+                let fwInterval = setInterval(() => launchFirework(false), 800);
+                
+                // Big Heart Firework after 3 seconds
+                setTimeout(() => {
+                    clearInterval(fwInterval);
+                    launchFirework(true);
+                    
+                    // Allow moving to next slide after heart shows
+                    setTimeout(() => {
+                        isFireworksActive = false; // fade out
+                        hint.style.display = 'block';
+                        hint.innerText = "Tap to continue";
+                    }, 4000);
+                }, 3000);
+            } else {
+                isFireworksActive = false;
+                ctx.clearRect(0,0,fwCanvas.width, fwCanvas.height);
+            }
+
+            // Slide 9: Stamp Paper Animation
+            if(currentSlide === 8) {
+                // Parallax effect on mouse move
+                document.addEventListener('mousemove', (e) => {
+                    const xAxis = (window.innerWidth / 2 - e.pageX) / 50;
+                    const yAxis = (window.innerHeight / 2 - e.pageY) / 50;
+                    gsap.to('#stamp-paper', { rotationY: xAxis, rotationX: yAxis, ease: "power1.out", duration: 0.5 });
+                });
+
+                // Signature Path Animation
+                const path = document.querySelector('.sig-path');
+                const length = path.getTotalLength();
+                gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
+                gsap.to(path, { strokeDashoffset: 0, duration: 3, ease: "power2.inOut", delay: 1 });
+
+                // Final Confetti
+                setTimeout(() => {
+                    var duration = 15 * 1000;
+                    var animationEnd = Date.now() + duration;
+                    var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+                    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+                    var interval = setInterval(function() {
+                        var timeLeft = animationEnd - Date.now();
+                        if (timeLeft <= 0) return clearInterval(interval);
+                        var particleCount = 50 * (timeLeft / duration);
+                        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                    }, 250);
+
+                    // Float hearts up completely
+                    hearts.forEach(h => gsap.to(h.userData.velocity, { y: 0.2, duration: 5 }));
+                }, 3500);
+            }
+        }
+
+        // ==========================================
+        // 4. EVENT LISTENERS
+        // ==========================================
+        
+        // Global Click for progression
+        document.body.addEventListener('click', (e) => {
+            if(!e.target.classList.contains('btn')) {
+                nextSlide();
+            }
+        });
+
+        // Specific Buttons
+        document.getElementById('btn-open-heart').addEventListener('click', () => {
+            goToSlide(3, 'heartSplit'); // Slide 4
+        });
+
+        document.getElementById('btn-gift').addEventListener('click', () => {
+            goToSlide(6); // Slide 7
+        });
+
+        document.getElementById('btn-certificate').addEventListener('click', () => {
+            goToSlide(8); // Slide 9
+        });
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            fwCanvas.width = window.innerWidth;
+            fwCanvas.height = window.innerHeight;
+        });
+
+        // Init First Slide Effects
+        checkSlideSpecifics();
+
+    </script>
+</body>
+</html>
